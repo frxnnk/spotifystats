@@ -1,47 +1,81 @@
 import requests
 import json
-import cfg
-import BD
+import spotifyETL.BD as BD
+import spotifyETL.cfg as cfg
+import time
+
 # Obtein number of followers from spotify playlist
-def getFollowers():
+def getFollowersPro():
     # Get the playlist id from the config file
     playlist_id = cfg.playlist_id
+    previousFollowers = getPreviousFollowers()
     # Get the token from the config file
-    token = cfg.token
+    token = getToken()
     # Get the playlist followers
-    response = requests.get('https://api.spotify.com/v1/playlists/' + playlist_id, headers={"Authorization": "Bearer " + token})
+    response = requests.get('https://api.spotify.com/v1/playlists/' + playlist_id, headers={"Authorization": "Bearer " + token['access_token']})
     # Convert the response to json
     json_data = json.loads(response.text)
     # Get the number of followers
-    followers = json_data['followers']['total']
+    followers = json_data
     # Return the number of followers
-    return followers
+    followers= followers['followers']['total']
+    newFollowers = previousFollowers[3]
+    unFollowers = previousFollowers[4]
+
+    # Compare the number of followers with the previous number of followers
+    if followers > previousFollowers[2]:
+        newFollowers += followers - previousFollowers[2]
+        # Save the newFollowers in the database
+        saveFollowers(previousFollowers[0],followers, newFollowers, unFollowers)
+        
+    elif followers < previousFollowers[2]:
+        unFollowers += previousFollowers - followers
+        saveFollowers(previousFollowers[0],followers, newFollowers, unFollowers)
+
+    return followers, newFollowers, unFollowers
+
+# Get token of Auth0 SpotifyWebAPi
+def getToken():
+    # Get the client_id from the config file
+    client_id = cfg.client_id
+    # Get the client_secret from the config file
+    client_secret = cfg.client_secret
+    # Get the token
+    response = requests.post('https://accounts.spotify.com/api/token', data={'grant_type': 'client_credentials'}, auth=(client_id, client_secret))
+    # Convert the response to json
+    json_data = json.loads(response.text)
+    # Get the token
+    token = json_data
+    # Return the token
+    return token
+
+# Save the number of followers, newFollowers, unFollowers in the database
+def saveFollowers(id, followers, newFollowers, unFollowers):
+    # Connect to the database
+    timeNow = time.strftime("%c")
+    id+=1
+    conn = BD.connectToDatabase()
+    # Create a cursor
+    cursor = conn.cursor()
+    # Execute a query to update the number of followers, newFollowers, unFollowers in the database   
+    cursor.execute("INSERT INTO followers (id, lastUpdate, followers, newFollowers, unFollowers) VALUES (%s,%s,%s, %s, %s)", (id, timeNow, followers, newFollowers, unFollowers))
+    try:
+        conn.commit()
+    except Exception as error:
+        print('Hubo un error: ', error)
+    # Close the connection
+    BD.dissconectFromDatabase(conn)
+    print('Se guardo el numero de followers en la BD')
 
 # Get the previous number of followers
 def getPreviousFollowers():
-    # Connect to the database
     conn = BD.connectToDatabase()
-    # Create a cursor
     cursor = conn.cursor()
     # Execute the query
     cursor.execute("SELECT * FROM followers ORDER BY id DESC LIMIT 1")
     # Get the result
     result = cursor.fetchone()
     # Close the connection
-    conn.close()
+    BD.dissconectFromDatabase(conn)
     # Return the result
-    return result[0] 
-
-# Get the numbers of followers and compare it with the previous number of followers  
-def compareFollowers():
-    # Get the number of followers
-    followers = getFollowers()
-    # Get the previous number of followers
-    previousFollowers = getPreviousFollowers()
-    # Compare the number of followers with the previous number of followers
-    if followers > previousFollowers:
-        # If the number of followers is greater than the previous number of followers, return true
-        return True
-    else:
-        # If the number of followers is less than the previous number of followers, return false
-        return False
+    return result 

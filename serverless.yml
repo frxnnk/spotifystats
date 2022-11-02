@@ -10,26 +10,13 @@ provider:
   region: us-east-1
 
 functions:
-  hello:
-    handler: handler.hello
-    events:
-      - http:
-          path: /
-          method: get
   followers:
     handler: handler.followers
     events:
       - http:
           path: /followers
-          method: get
-  previousFollowers:
-    handler: handler.previousFollowers
-    events:
-      - http:
-          path: /previousFollowers
           method: get          
-          
-
+        
 plugins:
   - serverless-offline
   - serverless-python-requirements

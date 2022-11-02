@@ -1,5 +1,5 @@
 import psycopg2
-import cfg
+import spotifyETL.cfg as cfg
 
 hostname = cfg.database_hostname
 database = cfg.database
@@ -18,6 +18,13 @@ def connectToDatabase():
             port = port_id)
         
     except Exception as error:
-        print('Hubo un error: ', error)
-    print('Conexion exitosa')
+        print('Hubo un error al conectarse a la BD: ', error)
+    print('Conexion a la BD exitosa')
     return conn
+
+def dissconectFromDatabase(conn):
+    try:
+        conn.close()
+    except Exception as error:
+        print('Hubo un error al desconectarse de la BD: ', error)
+    print('Desconexion de la BD exitosa')
