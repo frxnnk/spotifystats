@@ -9,3 +9,4 @@ database = 'tosamastats'
 database_username = 'postgres'
 database_pwd = 'eJeNVtaaYMC2T8'
 database_port_id = 5432
+
